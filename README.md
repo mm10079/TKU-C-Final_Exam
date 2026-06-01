@@ -14,12 +14,12 @@
 - 成績儲存與排行榜顯示（SQLite + SQLModel）
 
 ## 專案架構
-- `src/app/main.py`：Flask 應用，提供遊戲 API 與 HTML 前端
-- `src/app/game_ffi.py`：ctypes 介面，載入 `game.dll` 並呼叫 C 遊戲函式
-- `src/app/core/game.c`：C 語言遊戲核心，實作盤面、點擊、flood-fill、undo 與狀態輸出
-- `src/app/core/game.h`：C 函式庫介面定義
-- `src/app/database/score.py`：SQLModel 資料庫模型與操作
-- `src/app/templates/index.html`：遊戲前端頁面
+- `app/main.py`：Flask 應用，提供遊戲 API 與 HTML 前端
+- `app/game_ffi.py`：ctypes 介面，載入 `game.dll` 並呼叫 C 遊戲函式
+- `app/core/game.c`：C 語言遊戲核心，實作盤面、點擊、flood-fill、undo 與狀態輸出
+- `app/core/game.h`：C 函式庫介面定義
+- `app/database/score.py`：SQLModel 資料庫模型與操作
+- `app/templates/index.html`：遊戲前端頁面
 - `db/schema.sql`：資料庫結構備份
 
 ## 系統需求
@@ -39,7 +39,7 @@ python -m src.main
 ```
 
 ### 重新編譯 C 動態連結庫
-若 `src/app/core/game.dll` 不存在或修改了 `src/app/core/game.c`，請進入 `src/app/core` 後執行：
+若 `app/core/game.dll` 不存在或修改了 `app/core/game.c`，請進入 `app/core` 後執行：
 ```sh
 gcc -shared -o game.dll game.c
 ```
@@ -51,8 +51,8 @@ gcc -shared -o game.dll game.c
 4. 遊戲結束後可提交成績並查看排行榜
 
 ## 注意事項
-- 若 Python 程式出現閃退，請先確認 `src/app/core/game.dll` 是否正確存在且對應您的平台
-- 成績資料庫預設路徑為 `src/app/database/game.sqlite`
+- 若 Python 程式出現閃退，請先確認 `app/core/game.dll` 是否正確存在且對應您的平台
+- 成績資料庫預設路徑為 `app/database/game.sqlite`
 
 ## 擴充建議
 - 加入遊戲計時器與最佳分數統計
