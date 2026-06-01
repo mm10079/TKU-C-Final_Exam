@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>經典 98 踩地雷</title>
+    <link rel="stylesheet" href="https://unpkg.com/98.css">
+    <style>
+        body {
+            background-color: #008080; /* 經典 Windows 98 綠色背景 */
+            font-family: "MS Sans Serif", "Noto Sans TC", sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .window {
+            width: auto;
+            min-width: 320px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+        }
+        .window-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+        }
+        .menu-btn {
+            width: 180px;
+            height: 35px;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+        .form-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .form-row input {
+            width: 80px;
+        }
+        /* 遊戲面板與數位計時器風格 */
+        .game-status-bar {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            background: #c0c0c0;
+            padding: 5px;
+            margin-bottom: 10px;
+            box-shadow: inset -1px -1px #fff, inset 1px 1px #0a0a0a;
+        }
+        .counter {
+            background-color: #000;
+            color: #ff0000;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            font-size: 20px;
+            padding: 2px 6px;
+            border: inset 2px;
+        }
+        /* 地雷棋盤滾動區域（因應 100x100 大地圖） */
+        .board-container {
+            max-width: 80vw;
+            max-height: 65vh;
+            overflow: auto;
+            border: inset 2px;
+            background-color: #7f7f7f;
+        }
+        #minefield {
+            display: grid;
+            gap: 0px;                /* 98.css 密合度高，建議改成 0px 或 1px */
+            background-color: #808080;
+            padding: 2px;
+            width: max-content;      /* 強迫棋盤寬度剛好等於格子總寬 */
+            height: max-content;     /* 強迫棋盤高度剛好等於格子總高 */
+        }
+        /* 格子樣式 - 強制覆寫 98.css */
+        .tile {
+            display: block;          /* 🌟 核心：從 inline-block 改成 block，Grid 才能精準控制 */
+            width: 24px !important;  /* 強制固定寬度 */
+            height: 24px !important; /* 強制固定高度 */
+            min-width: 24px !important; 
+            min-height: 24px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important; /* 確保 3D 邊框算在 24px 內 */
+            font-weight: bold;
+            font-size: 14px;
+            text-align: center;
+            line-height: 22px;       /* 微調文字垂直置中 */
+            vertical-align: middle;
+        }
+
+        /* 翻開後的格子樣式 */
+        .tile.revealed {
+            border: 1px solid #808080 !important;
+            background-color: #c0c0c0 !important;
+            box-shadow: none !important; /* 去除 98.css 的 3D 陰影 */
+        }
+        /* 排行榜高亮 */
+        .highlight-score {
+            background-color: #000080;
+            color: #ffffff;
+            font-weight: bold;
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="window">
+    <div class="title-bar">
+        <div class="title-bar-text">Minesweeper 98</div>
+    </div>
+    
+    <div id="panel-main" class="window-body">
+        <h1 style="margin-bottom: 20px;">踩地雷</h1>
+        <button class="menu-btn" onclick="switchPanel('panel-difficulty')">開始遊戲</button>
+        <button class="menu-btn" onclick="loadLeaderboard()">顯示排行榜</button>
+    </div>
+
+    <div id="panel-difficulty" class="window-body hidden">
+        <h3>選擇難度</h3>
+        <button class="menu-btn" onclick="startGame('easy')">簡單難度</button>
+        <button class="menu-btn" onclick="startGame('medium')">中等難度</button>
+        <button class="menu-btn" onclick="startGame('hard')">困難難度</button>
+        <button class="menu-btn" onclick="switchPanel('panel-custom')">自訂難度</button>
+        <button class="menu-btn" onclick="switchPanel('panel-main')">返回主頁面</button>
+    </div>
+
+    <div id="panel-custom" class="window-body hidden">
+        <h3>自訂遊戲參數</h3>
+        <div class="form-group">
+            <div class="form-row"><label>行版面 (Rows):</label><input type="number" id="custom-rows" value="10" min="5" max="100"></div>
+            <div class="form-row"><label>列版面 (Cols):</label><input type="number" id="custom-cols" value="10" min="5" max="100"></div>
+            <div class="form-row"><label>炸彈比例 (%):</label><input type="number" id="custom-percent" value="15" min="1" max="99"></div>
+        </div>
+        <button class="menu-btn" onclick="startGame('custom')">進入遊戲</button>
+        <button class="menu-btn" onclick="switchPanel('panel-difficulty')">返回</button>
+    </div>
+
+    <div id="panel-game" class="window-body hidden" style="padding: 10px;">
+        <div class="game-status-bar">
+            <button id="btn-undo" onclick="sendUndo()">返回上一步</button>
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <span>💣 剩餘雷數:</span>
+                <div id="mine-counter" class="counter">000</div>
+            </div>
+            <button onclick="exitGame()">退出遊戲</button>
+        </div>
+        
+        <div class="board-container">
+            <div id="minefield"></div>
+        </div>
+    </div>
+
+    <div id="panel-name-input" class="window-body hidden">
+        <h3>恭喜通關！</h3>
+        <div class="form-group" style="align-items: center;">
+            <label for="player-name">請輸入您的名稱：</label>
+            <input type="text" id="player-name" style="width: 180px; margin: 10px 0;" placeholder="無名英雄">
+        </div>
+        <button class="menu-btn" onclick="submitScore()">確認按鈕</button>
+    </div>
+
+    <div id="panel-leaderboard" class="window-body hidden">
+        <h3>🏆 榮譽榜 🏆</h3>
+        <table class="interactive" style="width: 260px; text-align: center;">
+            <thead>
+                <tr><th>名次</th><th>玩家名稱</th><th>步數 (Score)</th></tr>
+            </thead>
+            <tbody id="leaderboard-tbody">
+                </tbody>
+        </table>
+        <button class="menu-btn" onclick="switchPanel('panel-main')">返回主頁面</button>
+    </div>
+</div>
+
+<script>
+    // 全域變數定義
+    let currentSettings = {};
+    let latestGameState = null;
+    let lastRegisteredNameScore = null; // 用於在排行榜高亮顯示剛才的分數
+
+    // 1. 面板切換
+    function switchPanel(panelId) {
+        document.querySelectorAll('.window-body').forEach(el => el.classList.add('hidden'));
+        document.getElementById(panelId).classList.remove('hidden');
+    }
+
+    // 2. 開局邏輯：向 Flask 讀取配置或處理自訂數值
+    function startGame(mode) {
+        let rows, cols, bombs;
+        
+        if (mode === 'custom') {
+            rows = parseInt(document.getElementById('custom-rows').value);
+            cols = parseInt(document.getElementById('custom-cols').value);
+            let bomb_ratio = parseFloat(document.getElementById('custom-percent').value) / 100;
+            bombs = Math.floor((rows * cols) * bomb_ratio / 100);
+            if(bombs <= 0) bombs = 1;
+            initBackendGame(rows, cols, bombs);
+        } else {
+            // 從後端獲取 setting.json 或直接發送請求（此處模擬 fetch 請求設定）
+            fetch('/api/get_settings')
+                .then(res => res.json())
+                .then(settings => {
+                    let config = settings[mode];
+                    bombs = Math.floor((config.rows * config.cols) * (config.bomb_ratio) / 100);
+                    initBackendGame(config.rows, config.cols, bombs);
+                })
+                .catch(() => {
+                    // 離線防錯備用
+                    const localFallback = { easy: [15,15,22], medium: [50,50,750], hard: [100,100,5000] };
+                    initBackendGame(localFallback[mode][0], localFallback[mode][1], localFallback[mode][2]);
+                });
+        }
+    }
+
+    // 呼叫 Flask 呼叫 C 核心的 game_init
+    function initBackendGame(rows, cols, bombs) {
+        fetch('/api/new_game', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ rows: rows, cols: cols, bombs: bombs })
+        })
+        .then(res => res.json())
+        .then(() => {
+            switchPanel('panel-game');
+            renderBoard();
+        });
+    }
+
+    // 3. 渲染地雷棋盤
+    function renderBoard() {
+        fetch('/api/state')
+        .then(res => res.json())
+        .then(state => {
+            
+            console.log('渲染遊戲狀態:', state); // 調試用
+            latestGameState = state;
+            const field = document.getElementById('minefield');
+            field.innerHTML = '';
+            
+            // 動態排版格子
+            // field.style.gridTemplateColumns = `repeat(${state.cols}, 24px)`;
+            field.style.display = "grid";
+            field.style.gridTemplateColumns = `repeat(${state.cols}, 24px)`;
+            field.style.gridTemplateRows = `repeat(${state.rows}, 24px)`;
+            field.style.width = "max-content"; // 🌟 這行很重要！強迫外框剛好貼齊格子的總寬度
+            // 計算剩餘雷數：原始雷數 - 已插旗數量 (對應 C 核心變數)
+            let displayMines = state.bomb_count - state.flags_count;
+            document.getElementById('mine-counter').innerText = String(displayMines).padStart(3, '0');
+
+            // 檢查撤回按鈕狀態：若 moves 歸零則關閉 Undo 按鈕
+            document.getElementById('btn-undo').disabled = (state.moves === 0);
+
+            state.tiles.forEach(tile => {
+                const cell = document.createElement('button');
+                cell.className = 'tile';
+                cell.dataset.r = tile.r;
+                cell.dataset.c = tile.c;
+                
+                // 根據 C 的狀態渲染
+                if (tile.state === 2) { // TILE_REVEALED
+                    cell.classList.add('revealed');
+                    if (tile.bomb === 1) {
+                        cell.innerHTML = '💣';
+                        cell.style.backgroundColor = 'red';
+                    } else if (tile.adj > 0) {
+                        cell.innerHTML = tile.adj;
+                        // 經典微軟調色盤
+                        const colors = ["", "blue", "green", "red", "purple", "maroon", "turquoise", "black", "gray"];
+                        cell.style.color = colors[tile.adj];
+                    }
+                } else if (tile.state === 1) { // TILE_FLAGGED
+                    cell.innerHTML = '🚩';
+                }
+                cell.addEventListener('contextmenu', e => e.preventDefault());
+                cell.addEventListener('click', e => e.preventDefault());
+
+                cell.addEventListener('mouseup', (e) => {
+                    e.preventDefault();
+                    
+                    // 🌟 核心改動 3：點擊時，不找外面的 tile 變數，直接從點擊的按鈕（e.currentTarget）身上拿 dataset 數值
+                    const clickedRow = parseInt(e.currentTarget.dataset.r);
+                    const clickedCol = parseInt(e.currentTarget.dataset.c);
+                    
+                    if (e.button === 0) {
+                        // 左鍵
+                        sendAction('left', clickedRow, clickedCol);
+                    } else if (e.button === 2) {
+                        // 右鍵
+                        sendAction('right', clickedRow, clickedCol);
+                    }
+                });
+
+                field.appendChild(cell);
+            });
+
+            // 判斷勝敗
+            if (state.game_over_type === 2) { // 註：需在 C 核心 JSON 擴充此失敗指標
+                alert('💥 逼逼──你踩到地雷，遊戲失敗！');
+                exitGame();
+            } else if (state.game_over_type === 1) { // 註：需在 C 核心 JSON 擴充此獲勝指標
+                lastRegisteredNameScore = state.moves; // 記錄本次步數
+                switchPanel('panel-name-input');
+            }
+        });
+        }
+
+    // 4. 發送操作給 Flask (對應你 Python 寫好的動作功能)
+    function sendAction(actionType, row, col) {
+        fetch('/api/click', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            // 🌟 把 type: actionType 改成 kind: actionType
+            body: JSON.stringify({ kind: actionType, row: row, col: col })
+        })
+        .then(res => res.json())
+        .then(() => renderBoard());
+    }
+
+    // 5. 撤回上一步 (Undo)
+    function sendUndo() {
+        fetch('/api/undo', { method: 'POST' })
+        .then(res => res.json())
+        .then(() => renderBoard());
+    }
+
+    // 6. 提交排行榜分數
+    function submitScore() {
+        let name = document.getElementById('player-name').value.trim() || '無名英雄';
+        fetch('/api/submit_score', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ name: name, score: lastRegisteredNameScore })
+        })
+        .then(() => loadLeaderboard());
+    }
+
+    // 7. 載入並顯示排行榜
+    function loadLeaderboard() {
+        switchPanel('panel-leaderboard');
+        fetch('/api/get_leaderboard')
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('leaderboard-tbody');
+                tbody.innerHTML = '';
+                
+                data.forEach((entry, idx) => {
+                    const row = document.createElement('tr');
+                    
+                    // 檢查是不是剛才玩完的那一場，如果是，高亮顯示
+                    if (lastRegisteredNameScore !== null && entry.score === lastRegisteredNameScore) {
+                        row.className = 'highlight-score';
+                    }
+                    
+                    row.innerHTML = `<td>${idx + 1}</td><td>${entry.name}</td><td>${entry.score} 步</td>`;
+                    tbody.appendChild(row);
+                });
+            });
+    }
+
+    function exitGame() {
+        switchPanel('panel-main');
+        lastRegisteredNameScore = null;
+    }
+</script>
+</body>
+</html>
