@@ -105,36 +105,54 @@ GAMEDLLAPI GameHandle* game_init(int rows, int cols, int bomb_count) {
     h->history = NULL;
     return h;
 }
-
 static int reveal_collect(GameHandle* h, int r, int c, int **out_pairs, int *out_count) {
     int rows = h->rows;
     int cols = h->cols;
     int max = rows * cols;
+    
+    // 做好重複檢查後，max 的大小就絕對安全
     int *pairs = (int*)malloc(sizeof(int) * 2 * max);
     int pc = 0;
     int *stack = (int*)malloc(sizeof(int) * 2 * max);
     int sp = 0;
+    
     stack[sp++] = r;
     stack[sp++] = c;
+    
     while (sp > 0) {
         int cc = stack[--sp];
         int rr = stack[--sp];
+        
         if (rr < 0 || rr >= rows || cc < 0 || cc >= cols) continue;
+        
         Tile *t = &h->tiles[idx(h, rr, cc)];
+        
+        // 🌟 關鍵修正 1：如果這格已經被翻開了，直接跳過！避免重複寫入 pairs 造成爆表
         if (t->state == TILE_REVEALED || t->state == TILE_FLAGGED) continue;
+        
+        // 標記為翻開
         t->state = TILE_REVEALED;
+        
+        // 寫入結果陣列
         pairs[pc * 2] = rr;
         pairs[pc * 2 + 1] = cc;
         pc++;
+        
         if (t->has_bomb) continue;
+        
         if (t->adj == 0) {
             for (int dr = -1; dr <= 1; ++dr) {
                 for (int dc = -1; dc <= 1; ++dc) {
                     if (dr == 0 && dc == 0) continue;
+                    
                     int nr = rr + dr;
                     int nc = cc + dc;
+                    
                     if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+                    
                     Tile *nt = &h->tiles[idx(h, nr, nc)];
+                    
+                    // 🌟 關鍵修正 2：只有真正還沒被碰過的格子才放進 stack
                     if (nt->state == TILE_COVERED) {
                         stack[sp++] = nr;
                         stack[sp++] = nc;
@@ -143,6 +161,7 @@ static int reveal_collect(GameHandle* h, int r, int c, int **out_pairs, int *out
             }
         }
     }
+    
     free(stack);
     *out_pairs = pairs;
     *out_count = pc;

@@ -36,8 +36,10 @@ if _lib is not None:
 class GameFFI:
     def __init__(self):
         self.h = None
+        self.difficulty = ""
 
-    def init(self, rows, cols, bomb_count):
+    def init(self, rows, cols, bomb_count, difficulty='custom'):
+        self.difficulty = difficulty
         if _lib is None:
             raise RuntimeError('game library not found at ' + _libpath + (f': {_load_error}' if _load_error else ''))
         self.h = _lib.game_init(ctypes.c_int(rows), ctypes.c_int(cols), ctypes.c_int(bomb_count))

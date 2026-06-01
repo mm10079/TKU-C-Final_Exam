@@ -124,7 +124,7 @@
     <div id="panel-main" class="window-body">
         <h1 style="margin-bottom: 20px;">踩地雷</h1>
         <button class="menu-btn" onclick="switchPanel('panel-difficulty')">開始遊戲</button>
-        <button class="menu-btn" onclick="loadLeaderboard()">顯示排行榜</button>
+        <button class="menu-btn" onclick="loadLeaderboard('all')">顯示排行榜</button>
     </div>
 
     <div id="panel-difficulty" class="window-body hidden">
@@ -172,13 +172,8 @@
     </div>
 
     <div id="panel-leaderboard" class="window-body hidden">
-        <h3>🏆 榮譽榜 🏆</h3>
-        <table class="interactive" style="width: 260px; text-align: center;">
-            <thead>
-                <tr><th>名次</th><th>玩家名稱</th><th>步數 (Score)</th></tr>
-            </thead>
-            <tbody id="leaderboard-tbody">
-                </tbody>
+        <h3 id="leaderboard-title">🏆 榮譽榜 🏆</h3>
+        <table id="leaderboard-table" class="interactive" style="width: 260px; text-align: center;">
         </table>
         <button class="menu-btn" onclick="switchPanel('panel-main')">返回主頁面</button>
     </div>
@@ -189,6 +184,7 @@
     let currentSettings = {};
     let latestGameState = null;
     let lastRegisteredNameScore = null; // 用於在排行榜高亮顯示剛才的分數
+    let lastRegisteredTime = null;
 
     // 1. 面板切換
     function switchPanel(panelId) {
@@ -206,7 +202,7 @@
             let bomb_ratio = parseFloat(document.getElementById('custom-percent').value) / 100;
             bombs = Math.floor((rows * cols) * bomb_ratio / 100);
             if(bombs <= 0) bombs = 1;
-            initBackendGame(rows, cols, bombs);
+            initBackendGame(rows, cols, bombs, mode);
         } else {
             // 從後端獲取 setting.json 或直接發送請求（此處模擬 fetch 請求設定）
             fetch('/api/get_settings')
@@ -214,22 +210,22 @@
                 .then(settings => {
                     let config = settings[mode];
                     bombs = Math.floor((config.rows * config.cols) * (config.bomb_ratio) / 100);
-                    initBackendGame(config.rows, config.cols, bombs);
+                    initBackendGame(config.rows, config.cols, bombs, mode);
                 })
                 .catch(() => {
                     // 離線防錯備用
                     const localFallback = { easy: [15,15,22], medium: [50,50,750], hard: [100,100,5000] };
-                    initBackendGame(localFallback[mode][0], localFallback[mode][1], localFallback[mode][2]);
+                    initBackendGame(localFallback[mode][0], localFallback[mode][1], localFallback[mode][2], mode);
                 });
         }
     }
 
     // 呼叫 Flask 呼叫 C 核心的 game_init
-    function initBackendGame(rows, cols, bombs) {
+    function initBackendGame(rows, cols, bombs, difficulty) {
         fetch('/api/new_game', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ rows: rows, cols: cols, bombs: bombs })
+            body: JSON.stringify({ rows: rows, cols: cols, bombs: bombs, difficulty: difficulty })
         })
         .then(res => res.json())
         .then(() => {
@@ -244,7 +240,7 @@
         .then(res => res.json())
         .then(state => {
             
-            console.log('渲染遊戲狀態:', state); // 調試用
+            // console.log('渲染遊戲狀態:', state); // 調試用
             latestGameState = state;
             const field = document.getElementById('minefield');
             field.innerHTML = '';
@@ -307,8 +303,7 @@
 
             // 判斷勝敗
             if (state.game_over_type === 2) { // 註：需在 C 核心 JSON 擴充此失敗指標
-                alert('💥 逼逼──你踩到地雷，遊戲失敗！');
-                exitGame();
+                loadLeaderboard('all');
             } else if (state.game_over_type === 1) { // 註：需在 C 核心 JSON 擴充此獲勝指標
                 lastRegisteredNameScore = state.moves; // 記錄本次步數
                 switchPanel('panel-name-input');
@@ -341,14 +336,25 @@
         fetch('/api/submit_score', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ name: name, score: lastRegisteredNameScore })
+            body: JSON.stringify({ name: name, score: lastRegisteredNameScore})
         })
-        .then(() => loadLeaderboard());
+        .then(response => response.json())
+        .then(data => {
+            lastRegisteredTime = data.time;
+            console.log(data.difficulty + ' 提交時間:', data.time); // 調試用
+            loadLeaderboard(data.difficulty)
+        });
+
     }
 
     // 7. 載入並顯示排行榜
-    function loadLeaderboard() {
+    function loadLeaderboard(difficulty) {
+        freeGame();
         switchPanel('panel-leaderboard');
+        const title = document.getElementById('leaderboard-title');
+        title.innerHTML = difficulty === 'all' ? '🏆 所有難度排行榜 🏆' : `🏆 ${difficulty} 難度排行榜 🏆`;
+        const table = document.getElementById('leaderboard-table');
+        table.innerHTML = `<thead id="leaderboard-thead"><tr>` + (difficulty === 'all' ? `<th>難度</th>` : '') + `<th>排名</th><th>玩家</th><th>分數</th><th>時間</th></tr></thead> <tbody id="leaderboard-tbody"></tbody>`;
         fetch('/api/get_leaderboard')
             .then(res => res.json())
             .then(data => {
@@ -356,14 +362,17 @@
                 tbody.innerHTML = '';
                 
                 data.forEach((entry, idx) => {
+                    if (entry.difficulty !== difficulty && difficulty !== 'all') {
+                        return;
+                    }
                     const row = document.createElement('tr');
                     
                     // 檢查是不是剛才玩完的那一場，如果是，高亮顯示
-                    if (lastRegisteredNameScore !== null && entry.score === lastRegisteredNameScore) {
+                    if (lastRegisteredTime !== null && entry.time === lastRegisteredTime) {
                         row.className = 'highlight-score';
                     }
                     
-                    row.innerHTML = `<td>${idx + 1}</td><td>${entry.name}</td><td>${entry.score} 步</td>`;
+                    row.innerHTML = (difficulty === 'all' ? `<td>${entry.difficulty}</td>` : '') + `<td>${idx + 1}</td><td>${entry.name}</td><td>${entry.score} 步</td><td>${entry.time}</td>`;
                     tbody.appendChild(row);
                 });
             });
@@ -372,6 +381,13 @@
     function exitGame() {
         switchPanel('panel-main');
         lastRegisteredNameScore = null;
+        freeGame();
+    }
+
+    function freeGame() {
+        fetch('/api/free_game', { method: 'POST' })
+        .then(res => res.json())
+        .then(() => console.log('遊戲資源已釋放'));
     }
 </script>
 </body>
