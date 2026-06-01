@@ -118,7 +118,7 @@
 
 <div class="window">
     <div class="title-bar">
-        <div class="title-bar-text">Minesweeper 98</div>
+        <div class="title-bar-text">期末報告 98</div>
     </div>
     
     <div id="panel-main" class="window-body">
@@ -303,6 +303,8 @@
 
             // 判斷勝敗
             if (state.game_over_type === 2) { // 註：需在 C 核心 JSON 擴充此失敗指標
+                lastRegisteredTime = null;
+                alert('很遺憾，你踩到地雷了！');
                 loadLeaderboard('all');
             } else if (state.game_over_type === 1) { // 註：需在 C 核心 JSON 擴充此獲勝指標
                 lastRegisteredNameScore = state.moves; // 記錄本次步數
@@ -360,8 +362,9 @@
             .then(data => {
                 const tbody = document.getElementById('leaderboard-tbody');
                 tbody.innerHTML = '';
+                let id = 1;
                 
-                data.forEach((entry, idx) => {
+                data.forEach((entry) => {
                     if (entry.difficulty !== difficulty && difficulty !== 'all') {
                         return;
                     }
@@ -372,7 +375,8 @@
                         row.className = 'highlight-score';
                     }
                     
-                    row.innerHTML = (difficulty === 'all' ? `<td>${entry.difficulty}</td>` : '') + `<td>${idx + 1}</td><td>${entry.name}</td><td>${entry.score} 步</td><td>${entry.time}</td>`;
+                    row.innerHTML = (difficulty === 'all' ? `<td>${entry.difficulty}</td>` : '') + `<td>${id}</td><td>${entry.name}</td><td>${entry.score} 步</td><td>${entry.time}</td>`;
+                    id++;
                     tbody.appendChild(row);
                 });
             });

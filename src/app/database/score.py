@@ -11,9 +11,8 @@ class Score(SQLModel, table=True):
     time: datetime = Field(default_factory=datetime.utcnow)
 
 class db:
-    def __init__(self, db_url: str = 'data.db', db_type: str = 'sqlite'):
-        database_url = f"{db_type}:///{db_url}"
-        self.engine = create_engine(database_url, connect_args={"check_same_thread": False, "timeout": 30})
+    def __init__(self, db_url):
+        self.engine = create_engine(db_url, connect_args={"check_same_thread": False, "timeout": 30})
         self.init_db()
 
     # 初始化資料庫

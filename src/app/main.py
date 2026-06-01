@@ -1,20 +1,26 @@
 from flask import Flask, jsonify, request, render_template
 from datetime import datetime
-from game_ffi import get_ffi
-from database.score import db, Score
+import json
 import os
+
+from models.schema import Config
+from database.score import db, Score
+from game_ffi import get_ffi
+
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__) , 'config.json')
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            return Config(**json.load(f))
+    else:
+        raise FileNotFoundError(f"Config file not found at {config_path}")
+    
+config = load_config()
+database = db(config.database.db_url) 
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 _ffi = get_ffi()
 
-DB_PATH = os.path.join(os.path.dirname(__file__), 'database', 'game.sqlite')
-database = db(DB_PATH, 'sqlite') 
-
-GAME_CONFIG = {
-    'easy': {'rows': 9, 'cols': 9, 'bomb_ratio': 0},
-    'medium': {'rows': 16, 'cols': 16, 'bomb_ratio': 0},
-    'hard': {'rows': 16, 'cols': 30, 'bomb_ratio': 0},
-}
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -33,7 +39,7 @@ def new_game():
 
 @app.route('/api/get_settings')
 def get_settings():
-    return jsonify(GAME_CONFIG)
+    return jsonify(config.get_difficulties)
 
 @app.route('/api/state')
 def state():
@@ -93,4 +99,4 @@ def free_game():
 
 if __name__ == '__main__':
     print("啟動伺服器")
-    app.run(debug=True)
+    app.run(debug=False, host=config.host, port=config.port)

@@ -48,3 +48,33 @@ C語言為遊戲運行的主程序，提供接口
 遊戲頁面：左上[返回上一步]、中上顯示當前炸彈數量、右上退出遊戲、中間為炸彈版面
 輸入名稱：直排顯示 名稱：[] 確認按鈕
 旁行榜：直排顯示資料，若此次分數在榜上，則高亮顯示分數
+
+# Minesweeper Project (C core + Flask UI)
+
+Prerequisites:
+- C compiler (GCC or MSVC)
+- Python 3.8+
+- Matching architecture between Python and the compiled C DLL (64-bit Python needs a 64-bit DLL)
+
+Build C library on Windows with MinGW (32-bit GCC):
+
+```powershell
+gcc -shared -o src/app/core/game.dll src/app/core/game.c
+```
+
+If you have a 64-bit compiler, build a 64-bit DLL for 64-bit Python:
+
+```powershell
+gcc -m64 -shared -o src/app/core/game.dll src/app/core/game.c
+```
+
+Install Python deps and run Flask:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r src/requirements.txt
+python src/app/main.py
+```
+
+If the DLL cannot be loaded due to architecture mismatch, install a Python interpreter that matches the DLL bitness or use a matching compiler.

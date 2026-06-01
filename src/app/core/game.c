@@ -110,14 +110,25 @@ static int reveal_collect(GameHandle* h, int r, int c, int **out_pairs, int *out
     int cols = h->cols;
     int max = rows * cols;
     
-    // 做好重複檢查後，max 的大小就絕對安全
     int *pairs = (int*)malloc(sizeof(int) * 2 * max);
+    if (!pairs) return -1;
     int pc = 0;
     int *stack = (int*)malloc(sizeof(int) * 2 * max);
+    int *visited = (int*)calloc(max, sizeof(int));
+    if (!stack || !visited) {
+        free(pairs);
+        free(stack);
+        free(visited);
+        return -1;
+    }
     int sp = 0;
     
-    stack[sp++] = r;
-    stack[sp++] = c;
+    int start_idx = idx(h, r, c);
+    if (r >= 0 && r < rows && c >= 0 && c < cols) {
+        visited[start_idx] = 1;
+        stack[sp++] = r;
+        stack[sp++] = c;
+    }
     
     while (sp > 0) {
         int cc = stack[--sp];
@@ -126,14 +137,10 @@ static int reveal_collect(GameHandle* h, int r, int c, int **out_pairs, int *out
         if (rr < 0 || rr >= rows || cc < 0 || cc >= cols) continue;
         
         Tile *t = &h->tiles[idx(h, rr, cc)];
-        
-        // 🌟 關鍵修正 1：如果這格已經被翻開了，直接跳過！避免重複寫入 pairs 造成爆表
         if (t->state == TILE_REVEALED || t->state == TILE_FLAGGED) continue;
         
-        // 標記為翻開
         t->state = TILE_REVEALED;
         
-        // 寫入結果陣列
         pairs[pc * 2] = rr;
         pairs[pc * 2 + 1] = cc;
         pc++;
@@ -147,13 +154,12 @@ static int reveal_collect(GameHandle* h, int r, int c, int **out_pairs, int *out
                     
                     int nr = rr + dr;
                     int nc = cc + dc;
-                    
                     if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-                    
-                    Tile *nt = &h->tiles[idx(h, nr, nc)];
-                    
-                    // 🌟 關鍵修正 2：只有真正還沒被碰過的格子才放進 stack
+                    int nidx = nr * cols + nc;
+                    if (visited[nidx]) continue;
+                    Tile *nt = &h->tiles[nidx];
                     if (nt->state == TILE_COVERED) {
+                        visited[nidx] = 1;
                         stack[sp++] = nr;
                         stack[sp++] = nc;
                     }
@@ -163,6 +169,7 @@ static int reveal_collect(GameHandle* h, int r, int c, int **out_pairs, int *out
     }
     
     free(stack);
+    free(visited);
     *out_pairs = pairs;
     *out_count = pc;
     return 0;

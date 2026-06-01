@@ -1,0 +1,16 @@
+{
+  "appName": "踩地雷",
+  "version": "1.0.0",
+  "listen_host": "localhost",
+  "listen_port": 8080,
+  "database": {
+      "db_type": "sqlite",
+      "db_url": "database/game.sqlite"
+  },
+
+  "difficulties": {
+    "easy": { "rows": 9, "cols": 9, "bomb_ratio": 10 },
+    "medium": { "rows": 16, "cols": 16, "bomb_ratio": 15 },
+    "hard": { "rows": 16, "cols": 30, "bomb_ratio": 20 }
+  }
+}
