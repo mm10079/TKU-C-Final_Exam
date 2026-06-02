@@ -87,6 +87,9 @@ def submit_score():
 def leaderboard():
     print("載入排行榜")
     scores = database.get_data()
+    if scores is None:
+        print("沒有找到任何紀錄")
+        return jsonify([])
     rows = [{'name':s.name,'score':s.score,'difficulty':s.difficulty,'time':s.time.strftime('%Y-%m-%d %H:%M:%S')} for s in scores]
     print("總紀錄數量：", len(rows))
     return jsonify(rows)
@@ -99,4 +102,4 @@ def free_game():
 
 if __name__ == '__main__':
     print("啟動伺服器")
-    app.run(debug=False, host=config.host, port=config.port)
+    app.run(debug=True, host=config.host, port=config.port)

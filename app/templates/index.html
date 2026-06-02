@@ -105,6 +105,12 @@
             background-color: #c0c0c0 !important;
             box-shadow: none !important; /* 去除 98.css 的 3D 陰影 */
         }
+        /* 炸彈格子樣式 */
+        .tile.bomb {
+            background-color: #ff0000 !important;
+            color: #ffffff !important;
+            font-size: 16px;
+        }
         /* 排行榜高亮 */
         .highlight-score {
             background-color: #000080;
@@ -199,7 +205,7 @@
         if (mode === 'custom') {
             rows = parseInt(document.getElementById('custom-rows').value);
             cols = parseInt(document.getElementById('custom-cols').value);
-            let bomb_ratio = parseFloat(document.getElementById('custom-percent').value) / 100;
+            let bomb_ratio = parseFloat(document.getElementById('custom-percent').value);
             bombs = Math.floor((rows * cols) * bomb_ratio / 100);
             if(bombs <= 0) bombs = 1;
             initBackendGame(rows, cols, bombs, mode);
@@ -268,8 +274,8 @@
                 if (tile.state === 2) { // TILE_REVEALED
                     cell.classList.add('revealed');
                     if (tile.bomb === 1) {
+                        cell.classList.add('bomb');
                         cell.innerHTML = '💣';
-                        cell.style.backgroundColor = 'red';
                     } else if (tile.adj > 0) {
                         cell.innerHTML = tile.adj;
                         // 經典微軟調色盤
