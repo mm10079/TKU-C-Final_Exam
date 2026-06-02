@@ -1,0 +1,55 @@
+# Dockerfile for Minesweeper Game (Flask + C Core)
+# 基於 Python 3.11 官方映像，在 Linux 容器中運行遊戲
+
+FROM python:3.11-slim
+
+# ============================================
+# 設定工作目錄
+# ============================================
+WORKDIR /app
+
+# ============================================
+# 安裝系統依賴
+# ============================================
+RUN apt-get update && apt-get install -y \
+    gcc \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================
+# 複製專案檔案
+# ============================================
+COPY . /app
+
+# ============================================
+# 安裝 Python 依賴
+# ============================================
+RUN pip install --no-cache-dir -r requirement.txt
+
+# ============================================
+# 編譯 C 遊戲核心
+# ============================================
+# 注意：在 Linux 容器中編譯會產生 .so 檔，而非 Windows .dll
+# game_ffi.py 會自動根據平台選擇正確的庫名稱
+RUN cd app/core && \
+    gcc -shared -fPIC -o libgame.so game.c && \
+    ls -la
+
+# ============================================
+# 初始化資料庫
+# ============================================
+RUN python -c "from app.database.score import db, Score, SQLModel; \
+    db_instance = db('sqlite:///app/database/game.sqlite'); \
+    print('✓ Database initialized')"
+
+# ============================================
+# 設定容器埠與啟動命令
+# ============================================
+EXPOSE 5000
+
+# 啟動 Flask 應用
+# 注意：設定 FLASK_ENV=production 以提高安全性
+ENV FLASK_APP=app.main
+ENV FLASK_ENV=production
+
+CMD ["python", "-m", "app.main"]
