@@ -48,18 +48,32 @@ static inline int idx(GameHandle* h, int r, int c) {
     return r * h->cols + c;
 }
 
-// 隨機放置地雷到盤面上
+// 隨機放置地雷到盤面上 (使用 Fisher-Yates 洗牌演算法)
+//
+// 運作方式：
+// 1. 先把前 bomb_count 個位置標記為地雷
+// 2. 使用 Fisher-Yates 演算法洗牌：在 [i, total) 範圍內隨機交換
+// 3. 時間複雜度 O(bomb_count)，避免碰撞浪費
 static void place_bombs(GameHandle* h, int bomb_count) {
     int total = h->rows * h->cols;
     if (bomb_count <= 0 || bomb_count > total) bomb_count = total / 10;
+    
     srand((unsigned)time(NULL));
-    int placed = 0;
-    while (placed < bomb_count) {
-        int i = rand() % total;
-        if (!h->tiles[i].has_bomb) {
-            h->tiles[i].has_bomb = 1;
-            placed++;
-        }
+    
+    // 步驟 1：初始化前 bomb_count 個位置為地雷
+    for (int i = 0; i < bomb_count; i++) {
+        h->tiles[i].has_bomb = 1;
+    }
+    
+    // 步驟 2：Fisher-Yates 洗牌
+    for (int i = 0; i < bomb_count; i++) {
+        // 在 [i, total) 範圍內隨機選一個位置
+        int j = i + (rand() % (total - i));
+        
+        // 交換 has_bomb 標記
+        int temp = h->tiles[i].has_bomb;
+        h->tiles[i].has_bomb = h->tiles[j].has_bomb;
+        h->tiles[j].has_bomb = temp;
     }
 }
 
@@ -120,11 +134,6 @@ GAMEDLLAPI GameHandle* game_init(int rows, int cols, int bomb_count) {
         free(h);
         return NULL;
     }
-    for (int i = 0; i < rows * cols; i++) {
-        h->tiles[i].has_bomb = 0;
-        h->tiles[i].adj = 0;
-        h->tiles[i].state = TILE_COVERED;
-    }
     place_bombs(h, bomb_count);
     compute_adjacency(h);
     h->history = NULL;
@@ -146,7 +155,7 @@ static int reveal_collect(GameHandle* h, int r, int c, int **out_pairs, int *out
     
     int *pairs = (int*)malloc(sizeof(int) * 2 * max);
     if (!pairs) return -1;
-    int pc = 0;
+    int pc = 0; // 紀錄 pairs 中揭開的格子數量，pairs 以 [r,c,r,c,...] 形式存放
     int *stack = (int*)malloc(sizeof(int) * 2 * max);
     int *visited = (int*)calloc(max, sizeof(int));
     if (!stack || !visited) {
@@ -155,7 +164,7 @@ static int reveal_collect(GameHandle* h, int r, int c, int **out_pairs, int *out
         free(visited);
         return -1;
     }
-    int sp = 0;
+    int sp = 0; // 紀錄 stack 中元素數量，stack 以 [r,c,r,c,...] 形式存放
     
     int start_idx = idx(h, r, c);
     if (r >= 0 && r < rows && c >= 0 && c < cols) {
