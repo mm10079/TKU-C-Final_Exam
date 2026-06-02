@@ -41,6 +41,8 @@ class GameFFI:
         self.difficulty = difficulty
         if _lib is None:
             raise RuntimeError('game library not found at ' + _libpath + (f': {_load_error}' if _load_error else ''))
+        if self.h:
+            self.free()
         self.h = _lib.game_init(ctypes.c_int(rows), ctypes.c_int(cols), ctypes.c_int(bomb_count))
         return self.h
 
@@ -62,7 +64,7 @@ class GameFFI:
     def get_state(self):
         if not self.h:
             return '{}'
-        buf = ctypes.create_string_buffer(65536)
+        buf = ctypes.create_string_buffer(65536)  # 64KB char buffer
         _lib.game_get_state(self.h, buf, ctypes.c_size_t(len(buf)))
         return buf.value.decode('utf-8')
 

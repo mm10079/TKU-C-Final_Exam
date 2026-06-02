@@ -35,7 +35,7 @@ pip install -r requirement.txt
 
 ### 執行遊戲
 ```sh
-python -m src.main
+python -m app.main
 ```
 
 ### 重新編譯 C 動態連結庫
