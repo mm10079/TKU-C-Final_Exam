@@ -304,8 +304,8 @@
             // 判斷勝敗
             if (state.game_over_type === 2) { // 註：需在 C 核心 JSON 擴充此失敗指標
                 lastRegisteredTime = null;
-                alert('很遺憾，你踩到地雷了！');
-                loadLeaderboard('all');
+                alert('很遺憾，你踩到地雷了！\n如果想回到上一部，請按「返回上一步」。');
+                // 失敗後不立刻結束遊戲，保留 undo 功能讓使用者可以回到上一個步驟
             } else if (state.game_over_type === 1) { // 註：需在 C 核心 JSON 擴充此獲勝指標
                 lastRegisteredNameScore = state.moves; // 記錄本次步數
                 switchPanel('panel-name-input');
