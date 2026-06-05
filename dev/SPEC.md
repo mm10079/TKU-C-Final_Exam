@@ -1,4 +1,5 @@
 # Minesweeper Web Game Specification
+[簡報位置](https://www.canva.com/design/DAHLVRO1FAE/iO3mL_EdJszsrOzi5D5RYg/edit)
 
 ## 1. 專案概述
 
